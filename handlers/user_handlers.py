@@ -134,7 +134,7 @@ async def show_categories(callback: CallbackQuery):
         return
     
     buttons = [
-        [InlineKeyboardButton(text=cat[1], callback_data=CategoryCallback(id=cat['id'], action="view").pack())]
+        [InlineKeyboardButton(text=cat['name'], callback_data=CategoryCallback(id=cat['id'], action="view").pack())]
         for cat in categories
     ]
     buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_shop")])
@@ -470,7 +470,7 @@ async def show_category_handler(callback: CallbackQuery):
 
 # Просмотр подкатегории
 @router.callback_query(F.data.startswith("subcategory_"))
-async def show_subcategory_handler(callback: CallbackQuery):
+async def show_subcategory_handler(callback: CallbackQuery, category_id: int):
     try:
         subcategory_id = int(callback.data.split("_")[1])
     except:
@@ -509,27 +509,44 @@ async def show_subcategory_handler(callback: CallbackQuery):
 # Просмотр товара
 @router.callback_query(ProductCallback.filter(F.action == "view"))
 async def show_product_handler(callback: CallbackQuery, callback_data: ProductCallback):
-    # Получаем id продукта из callback_data, а не из строки
     product_id = callback_data.id
     product = db.get_product(product_id)
-    
-    product = db.get_product(product_id)
-    if product:
-        await callback.message.answer_photo(
-            photo=product['image_url'],
-            caption=f"<b>{product['name']}</b>\n\n{product['description']}\n\nЦена: {product['price']} RUB",
-            reply_markup=buy_product_keyboard(product_id)
-        )
-    else:
-        await callback.answer("Товар не найден")
-    
+
+    if not product:
+        await callback.answer("❌ Товар не найден или был удален.", show_alert=True)
+        await callback.message.edit_text("К сожалению, этот товар больше не доступен.")
+        return
+
+    price_line = f"💰 Цена: {product['price']} RUB"
+    if product['count'] > 1:
+        price_line += f" (за {product['count']} шт.)"
+    quality_line = ""
+    if product['quality'] > 1:
+        quality_line = f"⭐ Качество: {product['quality']}\n"
+        
     text = (
         f"🛒 <b>{product['name']}</b>\n\n"
-        f"📝 Описание: {product['description'] or 'отсутствует'}\n"
-        f"💰 Цена: {product['price']} руб\n\n"
+        f"📝 Описание: {product['description']}\n"
+        f"{quality_line}"
+        f"{price_line}"
     )
-    
-    await callback.message.edit_text(text, reply_markup=product_detail_keyboard(product_id), parse_mode="HTML")
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="💳 Купить",
+        callback_data=ProductCallback(id=product_id, action="buy").pack()
+    )
+    if product['subcategory_id']:
+        builder.button(
+            text="⬅️ Назад к списку",
+            callback_data=SubcategoryCallback(id=product['subcategory_id'], action="view").pack()
+        )
+    else:
+        builder.button(
+            text="⬅️ Назад к списку",
+            callback_data=CategoryCallback(id=product['category_id'], action="view").pack()
+        )
+    builder.adjust(1)
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
     await callback.answer()
 
 # Добавление товара в корзину

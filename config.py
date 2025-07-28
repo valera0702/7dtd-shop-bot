@@ -1,8 +1,9 @@
 import os
+from typing import List
 
 BOT_TOKEN = "7173874685:AAES63OU-OzU_NRA1snsYdZAhr7RPhTiin8"
 CRYPTO_PAY_TOKEN = "432389:AA0NlDk6ICOMVxT7GzSea135PuCIOnCezY5"
-ADMIN_IDS = [6999106326]  # Ваши ID администраторов
 
+ADMIN_IDS: List[int] = [6999106326]
 REF_BONUS_REGISTRATION = 50  # Бонус за привлечение
 REFERRAL_PERCENT = 0.10  

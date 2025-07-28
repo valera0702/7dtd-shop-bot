@@ -8,6 +8,20 @@ def admin_main_menu():
         [KeyboardButton(text="Главное меню")]
     ])
 
+def admin_subcategories_menu():
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🗂 Список подкатегорий", callback_data="list_subcategory")
+    )
+    builder.row(
+        InlineKeyboardButton(text="➕ Добавить подкатегорию", callback_data="add_subcategory_generic")
+    )
+    builder.row(
+        InlineKeyboardButton(text="⬅️ Назад в админ-меню", callback_data="admin_main_menu")
+    )
+    return builder.as_markup()
+
 def admin_promos_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Создать промокод", callback_data="create_promo")],

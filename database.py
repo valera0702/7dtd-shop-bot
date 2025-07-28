@@ -70,24 +70,29 @@ class Database:
             cur.execute("""
             CREATE TABLE IF NOT EXISTS subcategories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
+                name TEXT UNIQUE NOT NULL UNIQUE,
                 description TEXT,
-                category_id INTEGER NOT NULL REFERENCES categories(id)
+                category_id INTEGER,
+                FOREIGN KEY(category_id) REFERENCES categories(id)
             )
             """)
             
             # Таблица товаров (обновленная)
             cur.execute("""
             CREATE TABLE IF NOT EXISTS products (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
                 description TEXT,
                 price REAL NOT NULL,
-                command_template TEXT NOT NULL DEFAULT '',
-                category_id INTEGER REFERENCES categories(id) DEFAULT NULL,
-                subcategory_id INTEGER REFERENCES subcategories(id) DEFAULT NULL,
+                count INTEGER NOT NULL DEFAULT 1,       -- <--- КОЛИЧЕСТВО
+                quality INTEGER NOT NULL DEFAULT 1,     -- <--- КАЧЕСТВО
+                rcon_command TEXT,
+                category_id INTEGER,
+                subcategory_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(category_id) REFERENCES categories(id),
+                FOREIGN KEY(subcategory_id) REFERENCES subcategories(id)
             )
             """)
             
@@ -190,15 +195,12 @@ class Database:
             return result[0] if result else None
     
     # Методы для работы с товарами
-    def add_product(self, name: str, description: str, price: float, 
-                   command_template: str, category_id: int = None, subcategory_id: int = None):
-        """Добавление нового товара"""
+    def add_product(self, name, description, price, count, quality, rcon_command, category_id, subcategory_id=None):
         with self.get_cursor() as cur:
             cur.execute("""
-                INSERT INTO products (
-                    name, description, price, command_template, category_id, subcategory_id
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (name, description, price, command_template, category_id, subcategory_id))
+                INSERT INTO products (name, description, price, count, quality, rcon_command, category_id, subcategory_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (name, description, price, count, quality, rcon_command, category_id, subcategory_id))
     
     def get_product(self, product_id):
         with self.get_cursor() as cur:
@@ -282,7 +284,7 @@ class Database:
                 (name, category_id, description)
             )
     
-    def get_subcategories(self, category_id: int):
+    def get_subcategories(self, category_id):
         with self.get_cursor() as cur:
             cur.execute("SELECT * FROM subcategories WHERE category_id = ?", (category_id,))
             return cur.fetchall()
@@ -309,24 +311,22 @@ class Database:
     
     # Методы для получения товаров
     def get_products_by_category(self, category_id: int):
-        """Получение товаров по категории, которые не входят ни в одну подкатегорию"""
         with self.get_cursor() as cur:
-            cur.execute("""
-            SELECT * 
-            FROM products 
-            WHERE category_id = ? AND subcategory_id IS NULL
-            """, (category_id,))
+            cur.execute("SELECT * FROM products WHERE category_id = ? AND subcategory_id IS NULL", (category_id,))
             return cur.fetchall()
-    
-    def get_products_by_subcategory(self, subcategory_id: int):
-        """Получение товаров по подкатегории"""
+
+# database.py -> class Database
+
+    def get_subcategory_info(self, subcategory_id: int):
         with self.get_cursor() as cur:
-            cur.execute("""
-            SELECT * 
-            FROM products 
-            WHERE subcategory_id = ?
-            """, (subcategory_id,))
-            return cur.fetchall()
+            cur.execute("SELECT * FROM subcategories WHERE id = ?", (subcategory_id,))
+            return cur.fetchone()
+
+    def get_category_name(self, category_id: int):
+        with self.get_cursor() as cur:
+            cur.execute("SELECT name FROM categories WHERE id = ?", (category_id,))
+            result = cur.fetchone()
+            return result['name'] if result else None
     
     def get_products_without_category(self):
         """Товары без категории"""
@@ -497,27 +497,27 @@ class Database:
             cur.execute("SELECT * FROM categories")
             return [dict(row) for row in cur.fetchall()]
 
-    def get_category(category_id: int):
+    def get_category(self, category_id: int):
         """Получение категории по ID"""
         with self.get_cursor() as cur:
             cur.execute("SELECT * FROM categories WHERE id = ?", (category_id,))
             row = cur.fetchone()
             return dict(row) if row else None
 
-    def get_subcategories(category_id: int):
+    def get_subcategories(self, category_id: int):
         """Получение всех подкатегорий для категории"""
         with self.get_cursor() as cur:
             cur.execute("SELECT * FROM subcategories WHERE category_id = ?", (category_id,))
             return [dict(row) for row in cur.fetchall()]
 
-    def get_subcategory(subcategory_id: int):
+    def get_subcategory(self, subcategory_id: int):
         """Получение подкатегории по ID"""
         with self.get_cursor() as cur:
             cur.execute("SELECT * FROM subcategories WHERE id = ?", (subcategory_id,))
             row = cur.fetchone()
             return dict(row) if row else None
 
-    def get_products_by_category(category_id: int):
+    def get_products_by_category(self, category_id: int):
         """Получение товаров по категории (без подкатегорий)"""
         with self.get_cursor() as cur:
             cur.execute("""
@@ -527,7 +527,7 @@ class Database:
             """, (category_id,))
             return [dict(row) for row in cur.fetchall()]
 
-    def get_products_by_subcategory(subcategory_id: int):
+    def get_products_by_subcategory(self, subcategory_id: int):
         """Получение товаров по подкатегории"""
         with self.get_cursor() as cur:
             cur.execute("""
@@ -537,7 +537,7 @@ class Database:
             """, (subcategory_id,))
             return [dict(row) for row in cur.fetchall()]
 
-    def get_product(product_id: int):
+    def get_product(self, product_id):
         """Получение товара по ID"""
         with self.get_cursor() as cur:
             cur.execute("SELECT * FROM products WHERE id = ?", (product_id,))

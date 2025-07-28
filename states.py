@@ -24,13 +24,18 @@ class ManageCategory(StatesGroup):
     edit_description = State()
     edit_options = State()
 
+class AddSubcategory(StatesGroup):
+    entering_name = State()
+
 class AddProduct(StatesGroup):
-    name = State()
-    description = State()
-    price = State()
-    subcategory = State()
-    category = State()
-    command_template = State()
+    choosing_category = State()
+    choosing_subcategory = State()
+    entering_name = State()
+    entering_description = State()
+    entering_price = State()
+    rcon_command = State()
+    entering_count = State()
+    entering_quality = State()
 
 class UserStates(StatesGroup):
     waiting_for_nickname = State()
@@ -46,10 +51,6 @@ class UserStates(StatesGroup):
     checkout = State()
     payment = State()
     promo = State()
-
-class AddSubcategory(StatesGroup):
-    name = State()
-    description = State()
 
 class EditSubcategory(StatesGroup):
     name = State()
