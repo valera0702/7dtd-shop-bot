@@ -134,7 +134,7 @@ async def show_categories(callback: CallbackQuery):
         return
     
     buttons = [
-        [InlineKeyboardButton(text=cat[1], callback_data=CategoryCallback(id=cat[0], action="view").pack())]
+        [InlineKeyboardButton(text=cat[1], callback_data=CategoryCallback(id=cat['id'], action="view").pack())]
         for cat in categories
     ]
     buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_shop")])
@@ -507,14 +507,21 @@ async def show_subcategory_handler(callback: CallbackQuery):
     await callback.answer()
 
 # Просмотр товара
-@router.callback_query(F.data.startswith("product_"))
-async def show_product_handler(callback: CallbackQuery):
-    product_id = int(callback.data.split("_")[1])
+@router.callback_query(ProductCallback.filter(F.action == "view"))
+async def show_product_handler(callback: CallbackQuery, callback_data: ProductCallback):
+    # Получаем id продукта из callback_data, а не из строки
+    product_id = callback_data.id
     product = db.get_product(product_id)
     
-    if not product:
-        await callback.answer("❌ Товар не найден", show_alert=True)
-        return
+    product = db.get_product(product_id)
+    if product:
+        await callback.message.answer_photo(
+            photo=product['image_url'],
+            caption=f"<b>{product['name']}</b>\n\n{product['description']}\n\nЦена: {product['price']} RUB",
+            reply_markup=buy_product_keyboard(product_id)
+        )
+    else:
+        await callback.answer("Товар не найден")
     
     text = (
         f"🛒 <b>{product['name']}</b>\n\n"

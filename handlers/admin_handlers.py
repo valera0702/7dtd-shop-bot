@@ -198,7 +198,7 @@ async def start_adding_product(callback: CallbackQuery, state: FSMContext):
     
     builder = InlineKeyboardBuilder()
     for cat in categories:
-        builder.button(text=cat[1], callback_data=f"product_cat_{cat[0]}")
+        builder.button(text=cat['name'], callback_data=f"product_cat_{cat['id']}")
     builder.button(text="Назад", callback_data="🛒 Товары")
     builder.adjust(1)
     

@@ -1,36 +1,42 @@
 import sqlite3
-import threading
-import logging
+import threading # <--- ДОБАВЬТЕ ЭТОТ ИМПОРТ В НАЧАЛЕ ФАЙЛА
 from contextlib import contextmanager
-from datetime import datetime
 
 class Database:
-    def __init__(self, path='shop.db'):
-        self.path = path
+    def __init__(self, db_name='shop.db'):
+        # Сохраняем имя файла БД
+        self.db_name = db_name
+        # Создаем потокобезопасное хранилище
         self.local = threading.local()
+        # Вызываем инициализацию БД
         self.init_db()
-    
+
     def get_connection(self):
-        """Возвращает потокобезопасное подключение к БД"""
+        # Проверяем, есть ли подключение в текущем потоке
         if not hasattr(self.local, "conn") or self.local.conn is None:
-            self.local.conn = sqlite3.connect(self.path, check_same_thread=False)
+            # Если нет, создаем новое
+            self.local.conn = sqlite3.connect(self.db_name)
+            # Эта строка позволяет обращаться к колонкам по имени (cat['name'])
             self.local.conn.row_factory = sqlite3.Row
         return self.local.conn
-    
+
     @contextmanager
     def get_cursor(self):
-        """Контекстный менеджер для работы с курсором"""
+        # Получаем соединение для текущего потока
         conn = self.get_connection()
-        cur = conn.cursor()
+        cursor = conn.cursor()
         try:
-            yield cur
+            yield cursor
             conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise e
-    
+        finally:
+            cursor.close()
+
+    def close_connection(self):
+        if hasattr(self.local, "conn") and self.local.conn is not None:
+            self.local.conn.close()
+            self.local.conn = None
+
     def init_db(self):
-        """Инициализация структуры БД"""
         with self.get_cursor() as cur:
             # Создаем таблицу состояний FSM
             cur.execute("""
@@ -485,7 +491,7 @@ class Database:
             """, (user_id, promocode_id))
             return cur.fetchone() is not None
 
-    def get_all_categories():
+    def get_all_categories(self):
         """Получение всех категорий"""
         with self.get_cursor() as cur:
             cur.execute("SELECT * FROM categories")
